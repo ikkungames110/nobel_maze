@@ -1,0 +1,1151 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文字迷路の赤ずきん 10x10</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #2b241f;
+      --muted: #6d6258;
+      --cream: #fff7e8;
+      --paper: rgba(255, 249, 237, .92);
+      --wall: #3b312b;
+      --tile: #fff0d3;
+      --seen: #ffd3c8;
+      --now: #ef9b96;
+      --red: #d83d48;
+      --green: #3d7d58;
+      --blue: #86c7e8;
+      --gold: #f1b83f;
+      font-family: "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(241, 184, 63, .28) 0 88px, transparent 90px),
+        linear-gradient(180deg, #f8f1e4 0, #eef6e9 52%, #fbf0e3 100%);
+      overflow-x: hidden;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(430px, .84fr) minmax(560px, 1.16fr);
+      grid-template-rows: minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px;
+      background:
+        linear-gradient(90deg, rgba(255, 244, 226, .82), rgba(232, 246, 226, .78)),
+        radial-gradient(circle at 24% 15%, rgba(255,255,255,.75) 0 120px, transparent 122px);
+    }
+
+    .stage-shell {
+      position: relative;
+      grid-column: 2;
+      min-width: 0;
+      overflow: hidden;
+      min-height: calc(100vh - 32px);
+      border: 1px solid rgba(59,49,43,.18);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 12% 14%, rgba(255, 217, 92, .88) 0 38px, transparent 39px),
+        linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,0) 38%);
+      box-shadow: 0 12px 34px rgba(62, 43, 26, .12);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 42px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.04rem, 2vw, 1.36rem);
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .badge {
+      min-width: 82px;
+      padding: 7px 10px;
+      border: 1px solid rgba(59,49,43,.18);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .78);
+      text-align: center;
+      font-weight: 900;
+      font-size: .8rem;
+      white-space: nowrap;
+    }
+
+    .stage-caption {
+      position: absolute;
+      z-index: 5;
+      left: 50%;
+      bottom: 12px;
+      width: min(680px, calc(100% - 24px));
+      transform: translateX(-50%);
+      display: grid;
+      gap: 4px;
+      padding: 11px 13px;
+      border: 1px solid rgba(59,49,43,.16);
+      border-radius: 12px;
+      background: rgba(255, 253, 247, .86);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 24px rgba(59,49,43,.1);
+    }
+
+    .stage-title {
+      font-size: clamp(1.05rem, 2.2vw, 1.55rem);
+      font-weight: 900;
+    }
+
+    .stage-text {
+      color: var(--muted);
+      font-size: clamp(.88rem, 1.8vw, 1rem);
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .image-stage {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: url("assets/scene/background-horizontal-path-v1.png") center / cover no-repeat;
+    }
+
+    .sky-dot {
+      position: absolute;
+      left: 8%;
+      top: 8%;
+      width: 74px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: #ffd95f;
+      box-shadow: 0 0 40px rgba(255, 217, 95, .42);
+    }
+
+    .cloud-strip,
+    .far-forest,
+    .ground-strip,
+    .grass-strip {
+      position: absolute;
+      left: 0;
+      width: 200%;
+      display: flex;
+      will-change: transform;
+    }
+
+    .cloud-strip {
+      top: 12%;
+      height: 86px;
+      animation: scrollLayer 34s linear infinite;
+    }
+
+    .far-forest {
+      bottom: 28%;
+      height: 170px;
+      animation: scrollLayer 18s linear infinite;
+    }
+
+    .ground-strip {
+      bottom: 0;
+      height: 34%;
+      animation: scrollLayer 8s linear infinite;
+    }
+
+    .grass-strip {
+      bottom: 3%;
+      height: 64px;
+      animation: scrollLayer 3.6s linear infinite;
+    }
+
+    .cloud-panel,
+    .forest-panel,
+    .ground-panel,
+    .grass-panel {
+      position: relative;
+      flex: 0 0 50%;
+      height: 100%;
+    }
+
+    .cloud {
+      position: absolute;
+      width: 140px;
+      height: 44px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.92);
+      box-shadow:
+        34px -14px 0 4px rgba(255,255,255,.92),
+        76px -2px 0 8px rgba(255,255,255,.92);
+    }
+
+    .cloud.one { left: 8%; top: 26px; }
+    .cloud.two { left: 48%; top: 8px; transform: scale(.82); }
+    .cloud.three { left: 78%; top: 34px; transform: scale(1.05); }
+
+    .forest-panel::before,
+    .forest-panel::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 100%;
+      background-repeat: repeat-x;
+      background-size: 180px 170px;
+    }
+
+    .forest-panel::before {
+      opacity: .75;
+      background-image:
+        linear-gradient(135deg, transparent 0 43%, #377a55 43% 57%, transparent 57%),
+        linear-gradient(45deg, transparent 0 43%, #2f6d4d 43% 57%, transparent 57%),
+        linear-gradient(90deg, transparent 0 48%, #765239 48% 52%, transparent 52%);
+      background-position: 0 0, 0 0, 0 58px;
+    }
+
+    .forest-panel::after {
+      opacity: .92;
+      background-size: 136px 142px;
+      background-image:
+        linear-gradient(135deg, transparent 0 43%, #2f704f 43% 57%, transparent 57%),
+        linear-gradient(45deg, transparent 0 43%, #286446 43% 57%, transparent 57%),
+        linear-gradient(90deg, transparent 0 47%, #6e4c34 47% 53%, transparent 53%);
+      background-position: 44px 28px, 44px 28px, 44px 72px;
+    }
+
+    .ground-panel {
+      background:
+        radial-gradient(circle at 18% 28%, rgba(255,255,255,.2) 0 12px, transparent 13px),
+        radial-gradient(circle at 62% 42%, rgba(255,255,255,.16) 0 10px, transparent 11px),
+        linear-gradient(180deg, #9bd37d, #72b65f);
+    }
+
+    .grass-panel {
+      background-repeat: repeat-x;
+      background-size: 92px 64px;
+      background-image:
+        linear-gradient(70deg, transparent 0 44%, #3e8b55 44% 50%, transparent 50%),
+        linear-gradient(110deg, transparent 0 48%, #4a9a5e 48% 54%, transparent 54%),
+        linear-gradient(86deg, transparent 0 50%, #327d4b 50% 56%, transparent 56%);
+    }
+
+    .walk-hero {
+      position: absolute;
+      z-index: 3;
+      left: 50%;
+      bottom: 13%;
+      width: clamp(142px, 20vw, 236px);
+      height: clamp(213px, 30vw, 354px);
+      object-fit: contain;
+      object-position: center bottom;
+      transform: translateX(-50%);
+      transform-origin: 50% 92%;
+      animation: heroPendulum .34s ease-in-out infinite alternate;
+      filter: drop-shadow(0 12px 8px rgba(43,36,31,.22));
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .walk-hero.reaction-hero {
+      animation: none;
+      width: clamp(142px, 20vw, 236px);
+      height: clamp(213px, 30vw, 354px);
+    }
+
+    .scene-object {
+      position: absolute;
+      z-index: 2;
+      left: 67%;
+      bottom: 16%;
+      width: clamp(88px, 13vw, 150px);
+      height: clamp(88px, 13vw, 150px);
+      transform: translateX(-50%);
+      animation: objectPop 1.4s ease-in-out infinite;
+    }
+
+    .scene-object.flower {
+      z-index: 4;
+      bottom: 13%;
+      width: clamp(71px, 10vw, 118px);
+      height: clamp(107px, 15vw, 177px);
+      background: url("assets/scene/stickers/flower-selected-01.png") center bottom / contain no-repeat;
+      animation: flowerBloom .9s ease-out both;
+      filter: drop-shadow(0 10px 7px rgba(43,36,31,.18));
+    }
+
+    .scene-object.flower::before,
+    .scene-object.flower::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 26%;
+      width: 11px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: rgba(255, 229, 110, .92);
+      box-shadow:
+        -36px 10px 0 -3px rgba(255, 229, 110, .78),
+        34px -6px 0 -4px rgba(255, 229, 110, .82),
+        18px 34px 0 -5px rgba(255, 229, 110, .72);
+      transform: translateX(-50%);
+      animation: flowerSpark .95s ease-out both;
+    }
+
+    .scene-object.flower::after {
+      animation-delay: .32s;
+      transform: translateX(-50%) rotate(35deg);
+      opacity: .7;
+    }
+
+    .scene-object.cat {
+      border-radius: 50% 50% 44% 44%;
+      background:
+        radial-gradient(circle at 38% 38%, #222 0 3%, transparent 4%),
+        radial-gradient(circle at 62% 38%, #222 0 3%, transparent 4%),
+        radial-gradient(circle at 50% 50%, #7b4c2d 0 4%, transparent 5%),
+        linear-gradient(135deg, #f0b15b 0 28%, transparent 29%),
+        linear-gradient(225deg, #f0b15b 0 28%, transparent 29%),
+        #f0b15b;
+    }
+
+    .scene-object.house {
+      width: clamp(136px, 19vw, 230px);
+      height: clamp(124px, 17vw, 210px);
+      background:
+        linear-gradient(135deg, transparent 0 34%, #c6533e 35% 50%, transparent 51%),
+        linear-gradient(45deg, transparent 0 34%, #c6533e 35% 50%, transparent 51%),
+        linear-gradient(90deg, transparent 0 41%, #8b6540 41% 58%, transparent 58%),
+        linear-gradient(#ffe1a6, #f5c985);
+      border: 4px solid rgba(139,101,64,.75);
+      border-radius: 8px;
+      animation-duration: 2.2s;
+    }
+
+    .scene-object.note {
+      color: #634fa3;
+      font-size: clamp(4rem, 9vw, 8rem);
+      font-weight: 900;
+      display: grid;
+      place-items: center;
+    }
+
+    .scene-object.letter {
+      width: clamp(100px, 15vw, 170px);
+      height: clamp(64px, 9vw, 104px);
+      border: 4px solid #8b6540;
+      border-radius: 8px;
+      background:
+        linear-gradient(34deg, transparent 0 47%, #8b6540 48% 51%, transparent 52%),
+        linear-gradient(146deg, transparent 0 47%, #8b6540 48% 51%, transparent 52%),
+      #fff7df;
+      animation-name: letterFloat;
+    }
+
+    .scene-object.nap {
+      width: clamp(124px, 17vw, 210px);
+      height: clamp(74px, 10vw, 124px);
+      border-radius: 52% 48% 46% 54%;
+      background:
+        radial-gradient(circle at 30% 34%, rgba(255,255,255,.76) 0 12%, transparent 13%),
+        radial-gradient(circle at 58% 46%, rgba(255,255,255,.54) 0 10%, transparent 11%),
+        linear-gradient(180deg, #bfe08d, #78b95f);
+      border: 3px solid rgba(70, 119, 61, .42);
+      animation-duration: 2.1s;
+    }
+
+    .scene-object.nap::after {
+      content: "Zzz";
+      position: absolute;
+      right: -18%;
+      top: -42%;
+      color: #6e62a8;
+      font-weight: 900;
+      font-size: clamp(1.25rem, 2.6vw, 2rem);
+      text-shadow: 0 2px 0 rgba(255,255,255,.72);
+      animation: wordFloat 1.8s ease-in-out infinite;
+    }
+
+    .scene-word {
+      display: none;
+    }
+
+    .drifting-trees {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 33%;
+      z-index: 1;
+      height: 25%;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .tree-sprite {
+      position: absolute;
+      left: 100%;
+      bottom: var(--tree-bottom, 0%);
+      width: clamp(122px, 12vw, 188px);
+      height: auto;
+      opacity: .74;
+      transform: translateX(0);
+      animation: treeDrift 26s linear infinite;
+      animation-delay: var(--tree-delay, 0s);
+      filter:
+        blur(.65px)
+        drop-shadow(0 12px 7px rgba(43,36,31,.11));
+      will-change: transform;
+    }
+
+    .tree-sprite:nth-child(odd) { --tree-bottom: -4%; }
+    .tree-sprite:nth-child(even) { --tree-bottom: 2%; }
+
+    .drifting-grass {
+      position: absolute;
+      inset: auto 0 0;
+      z-index: 4;
+      height: 15%;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .grass-sprite {
+      position: absolute;
+      left: 100%;
+      bottom: var(--grass-bottom, 0);
+      width: var(--grass-width, 120px);
+      height: auto;
+      opacity: var(--grass-opacity, .9);
+      transform: translateX(0);
+      animation: grassDrift var(--grass-speed, 9s) linear infinite;
+      animation-delay: var(--grass-delay, 0s);
+      filter:
+        blur(var(--grass-blur, 0))
+        drop-shadow(0 8px 5px rgba(43,36,31,.12));
+      will-change: transform;
+    }
+
+    .grass-sprite.back {
+      z-index: 1;
+      --grass-bottom: 4%;
+      --grass-width: clamp(46px, 4.8vw, 70px);
+      --grass-speed: 15.7s;
+      --grass-blur: .2px;
+      --grass-opacity: .72;
+    }
+
+    .grass-sprite.mid {
+      z-index: 2;
+      --grass-bottom: -8%;
+      --grass-width: clamp(58px, 6.2vw, 96px);
+      --grass-speed: 12.1s;
+      --grass-blur: .7px;
+      --grass-opacity: .82;
+    }
+
+    .grass-sprite.front {
+      z-index: 3;
+      --grass-bottom: -24%;
+      --grass-width: clamp(92px, 9.5vw, 152px);
+      --grass-speed: 8.9s;
+      --grass-blur: 2.2px;
+      --grass-opacity: .8;
+    }
+
+    .stage-shell.paused .cloud-strip,
+    .stage-shell.paused .far-forest,
+    .stage-shell.paused .ground-strip,
+    .stage-shell.paused .grass-strip,
+    .stage-shell.paused .tree-sprite,
+    .stage-shell.paused .grass-sprite {
+      animation-play-state: paused;
+    }
+
+    .stage-shell.walking .cloud-strip,
+    .stage-shell.walking .far-forest,
+    .stage-shell.walking .ground-strip,
+    .stage-shell.walking .grass-strip {
+      animation-play-state: running;
+    }
+
+    .cloud { animation: none; }
+    .wrong-mode .stage-shell { background: linear-gradient(180deg, #c7d0ff 0 44%, #acd590 44% 100%); }
+    .wrong-mode .image-stage { background: url("assets/scene/background-horizontal-path-v1.png") center / cover no-repeat; }
+
+    .play {
+      position: relative;
+      z-index: 6;
+      grid-column: 1;
+      grid-row: 1;
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      width: 100%;
+      min-height: calc(100vh - 32px);
+      margin: 0;
+      padding: 14px;
+      background: rgba(255, 249, 237, .93);
+      border: 1px solid rgba(59,49,43,.18);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 12px 34px rgba(62, 43, 26, .12);
+    }
+
+    .maze-pad {
+      display: grid;
+      place-items: center;
+      min-height: 0;
+      padding: 4px;
+      overflow: hidden;
+    }
+
+    .maze {
+      display: grid;
+      grid-template-columns: repeat(10, minmax(0, 1fr));
+      grid-template-rows: repeat(10, minmax(0, 1fr));
+      width: min(100%, 560px, calc(100vh - 250px));
+      min-width: 0;
+      background: var(--wall);
+      border: 4px solid var(--wall);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 10px 28px rgba(58,40,23,.17);
+    }
+
+    .cell {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      min-height: 0;
+      aspect-ratio: 1;
+      border: 2px solid var(--wall);
+      background: var(--tile);
+      font-weight: 900;
+      font-size: clamp(1.05rem, 2.3vw, 1.45rem);
+      line-height: 1;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .cell::before {
+      content: "";
+      position: absolute;
+      inset: 13%;
+      border-radius: 6px;
+      background: rgba(255,255,255,.36);
+      transform: rotate(-5deg);
+    }
+
+    .cell span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .cell.visited { background: var(--seen); }
+    .cell.current {
+      background: var(--now);
+      animation: cellPop .24s ease-out;
+    }
+
+    .cell.current::after {
+      content: "";
+      position: absolute;
+      z-index: 2;
+      left: 50%;
+      bottom: 8%;
+      width: 42%;
+      height: 48%;
+      border-radius: 50% 50% 42% 42%;
+      background:
+        radial-gradient(circle at 50% 34%, #ffd7b1 0 18%, transparent 19%),
+        radial-gradient(circle at 39% 33%, #2b241f 0 3%, transparent 3.5%),
+        radial-gradient(circle at 61% 33%, #2b241f 0 3%, transparent 3.5%),
+        linear-gradient(180deg, #d83d48 0 52%, #ea5961 53% 100%);
+      border: 2px solid #9e2630;
+      box-shadow: 0 2px 0 rgba(59,49,43,.2), 0 0 0 4px rgba(216, 61, 72, .12);
+      transform: translateX(-50%);
+      animation: miniWalk .72s ease-in-out infinite;
+    }
+
+    .cell.current span {
+      z-index: 3;
+      transform: translateY(-32%);
+      padding: 1px 4px;
+      border-radius: 6px;
+      background: rgba(255, 250, 239, .74);
+      text-shadow: 0 1px 0 #fff;
+    }
+
+    .cell.goal { background: #ffe28b; }
+    .cell.bad { background: #d6ebff; }
+
+    .sentence-panel {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .sentence-panel > div:first-child {
+      min-height: 96px;
+      padding: 10px 12px;
+      border: 1px solid rgba(59,49,43,.16);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #fffdf8, #fff1da);
+      box-shadow: 0 8px 22px rgba(59,49,43,.08);
+    }
+
+    .sentence-panel > div:last-child {
+      display: grid;
+      grid-template-columns: 112px;
+      gap: 10px;
+      align-content: stretch;
+      padding: 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.42);
+      box-shadow: inset 0 0 0 1px rgba(59,49,43,.12);
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: .82rem;
+      font-weight: 900;
+    }
+
+    .sentence {
+      min-height: 1.5em;
+      font-size: clamp(1rem, 2vw, 1.24rem);
+      font-weight: 900;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, 36px);
+      grid-template-rows: repeat(2, 33px);
+      gap: 6px;
+      justify-content: center;
+      align-content: center;
+      margin-top: 0;
+    }
+
+    button {
+      border: 1px solid rgba(59,49,43,.22);
+      border-radius: 10px;
+      background: #fffdf7;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 3px 0 rgba(59,49,43,.18);
+    }
+
+    button:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 rgba(59,49,43,.18);
+    }
+
+    .restart {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 10px;
+    }
+
+    .up { grid-column: 2; }
+    .left { grid-column: 1; grid-row: 2; }
+    .down { grid-column: 2; grid-row: 2; }
+    .right { grid-column: 3; grid-row: 2; }
+
+    @keyframes cellPop {
+      0% { transform: scale(.92); }
+      70% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes miniWalk {
+      0%, 100% { transform: translateX(-50%) translateY(0) rotate(-2deg); }
+      50% { transform: translateX(-50%) translateY(-5%) rotate(2deg); }
+    }
+
+    @keyframes scrollLayer {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+
+    @keyframes objectPop {
+      0%, 100% { transform: translateX(-50%) translateY(0) rotate(-2deg); }
+      50% { transform: translateX(-50%) translateY(-16px) rotate(3deg); }
+    }
+
+    @keyframes flowerBloom {
+      0% { transform: translateX(-50%) translateY(10px) scale(.72); opacity: 0; }
+      24% { transform: translateX(-50%) translateY(-6px) scale(1.08); opacity: 1; }
+      52% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+    }
+
+    @keyframes flowerSpark {
+      0%, 18% { opacity: 0; transform: translateX(-50%) scale(.45); }
+      38% { opacity: .95; transform: translateX(-50%) scale(1); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-18px) scale(.75); }
+    }
+
+    @keyframes letterFloat {
+      0%, 100% { transform: translateX(-50%) translate(0, 0) rotate(-7deg); }
+      50% { transform: translateX(-50%) translate(42px, -34px) rotate(6deg); }
+    }
+
+    @keyframes wordFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes grassDrift {
+      from { transform: translateX(0); }
+      to { transform: translateX(calc(-100vw - 260px)); }
+    }
+
+    @keyframes treeDrift {
+      from { transform: translateX(0); }
+      to { transform: translateX(calc(-100vw - 320px)); }
+    }
+
+    @keyframes heroPendulum {
+      0% { transform: translateX(-50%) translateY(0) rotate(-1.8deg); }
+      100% { transform: translateX(-50%) translateY(-4px) rotate(1.8deg); }
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(330px, 44vh) auto;
+        gap: 10px;
+        padding: 10px;
+      }
+
+      .stage-shell {
+        grid-column: 1;
+        grid-row: 1;
+        min-height: 0;
+      }
+
+      .play {
+        grid-column: 1;
+        grid-row: 2;
+        min-height: 0;
+      }
+
+      .maze {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 740px) {
+      .app { grid-template-rows: minmax(330px, 44vh) auto; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      h1 { font-size: 1rem; }
+      .badge { min-width: 82px; padding: 7px 9px; font-size: .9rem; }
+      .stage-caption { bottom: 8px; }
+      .maze { width: calc(100vw - 78px); }
+      .sentence-panel { grid-template-columns: 1fr; }
+      .sentence-panel > div:last-child { grid-template-columns: 1fr; }
+      .controls { justify-content: center; justify-self: center; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <section class="stage-shell" aria-label="物語アニメーション">
+      <div id="stage" class="image-stage" role="img" aria-label="赤ずきんのアニメーション"></div>
+      <div class="stage-caption">
+        <div class="stage-title" id="stageTitle">森の入口</div>
+        <div class="stage-text" id="stageText">矢印キーかボタンで進み、ひらがなをつなげて一文を完成させます。</div>
+      </div>
+    </section>
+
+    <section class="play" aria-label="文字迷路">
+      <div class="topbar">
+        <h1>文字迷路の赤ずきん</h1>
+        <div class="badge" id="badge">STAGE 1</div>
+      </div>
+      <div class="maze-pad">
+        <div class="maze" id="maze" aria-live="polite"></div>
+      </div>
+      <div class="sentence-panel">
+        <div>
+          <div class="label">できかけの一文</div>
+          <div class="sentence" id="sentence"></div>
+        </div>
+        <div>
+          <button class="restart" id="restart">はじめから</button>
+          <div class="controls" aria-label="移動">
+            <button class="up" data-move="0,-1" aria-label="上へ">↑</button>
+            <button class="left" data-move="-1,0" aria-label="左へ">←</button>
+            <button class="down" data-move="0,1" aria-label="下へ">↓</button>
+            <button class="right" data-move="1,0" aria-label="右へ">→</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const cols = 10;
+    const rows = 10;
+    const start = key(0, 5);
+
+    const trunk = Array.from({ length: 10 }, (_, x) => key(x, 5));
+    const routeA = [[1,4],[0,4],[0,3],[1,3],[1,2],[0,2],[0,1],[1,1],[1,0],[0,0]].map(toKey);
+    const routeB = [[2,4],[3,4],[4,4],[4,3],[3,3],[2,3],[2,2],[3,2],[4,2],[4,1],[4,0],[3,0],[2,0],[2,1],[3,1]].map(toKey);
+    const routeC = [[5,4],[6,4],[6,3],[5,3],[5,2],[6,2],[6,1],[5,1],[5,0],[6,0]].map(toKey);
+    const routeD = [[9,4],[8,4],[7,4],[7,3],[8,3],[9,3],[9,2],[8,2],[7,2],[7,1],[7,0],[8,0],[9,0],[9,1],[8,1]].map(toKey);
+    const routeE = [[0,6],[1,6],[2,6],[2,7],[1,7],[0,7],[0,8],[0,9],[1,9],[2,9],[2,8],[1,8]].map(toKey);
+    const routeF = [[3,6],[4,6],[4,7],[3,7],[3,8],[4,8],[4,9],[3,9]].map(toKey);
+    const routeG = [[7,6],[6,6],[5,6],[5,7],[6,7],[7,7],[7,8],[7,9],[6,9],[5,9],[5,8],[6,8]].map(toKey);
+    const routeH = [[9,6],[8,6],[8,7],[9,7],[9,8],[8,8],[8,9],[9,9]].map(toKey);
+
+    const labels = new Map();
+    writeText(trunk, "あかずきんはきょうも");
+    writeText([...trunk.slice(0, 2), ...routeA], "あかいはながみちでさいた");
+    writeText([...trunk.slice(0, 3), ...routeB], "あかずきんはひろばでこねことあそんだ");
+    writeText([...trunk.slice(0, 6), ...routeC], "あかずきんはこいしをならべてみた");
+    writeText([...trunk, ...routeD], "あかずきんはきょうもはらっぱでくさぶえをならしたよ");
+    writeText([trunk[0], ...routeE], "あまいぱいをみんなでたべた");
+    writeText([...trunk.slice(0, 4), ...routeF], "あかずきんがうたをうたう");
+    writeText([...trunk.slice(0, 8), ...routeG], "あかずきんはきょうははらっぱでひるねする");
+    writeText([...trunk, ...routeH], "あかずきんはきょうもおばあさんにあう");
+
+    const graph = new Map();
+    for (let y = 0; y < rows; y += 1) {
+      for (let x = 0; x < cols; x += 1) graph.set(key(x, y), new Set());
+    }
+    connect(trunk);
+    connect([key(1, 5), ...routeA]);
+    connect([key(2, 5), ...routeB]);
+    connect([key(5, 5), ...routeC]);
+    connect([key(9, 5), ...routeD]);
+    connect([key(0, 5), ...routeE]);
+    connect([key(3, 5), ...routeF]);
+    connect([key(7, 5), ...routeG]);
+    connect([key(9, 5), ...routeH]);
+
+    const endings = new Map([
+      [last(routeA), { type: "flower", good: false, title: "あかい花の道", text: "赤い花が道に咲き、赤ずきんは見とれて足を止めました。" }],
+      [last(routeB), { type: "cat", good: false, title: "こねこと広場", text: "広場のこねこが毛糸を転がし、赤ずきんはつい遊んでしまいました。" }],
+      [last(routeC), { type: "stone", good: false, title: "こいしのならべっこ", text: "赤ずきんは小石を星の形に並べて、すっかり道草をしました。" }],
+      [last(routeD), { type: "whistle", good: false, title: "原っぱの草笛", text: "赤ずきんは原っぱで草笛を鳴らし、風の音に聞き入ってしまいました。" }],
+      [last(routeE), { type: "pie", good: false, title: "甘いパイの会", text: "甘いパイの香りに誘われ、森のみんなでおやつ会が始まりました。" }],
+      [last(routeF), { type: "song", good: false, title: "歌う赤ずきん", text: "赤ずきんは小さな舞台で歌い、森の木々が手拍子しました。" }],
+      [last(routeG), { type: "nap", good: false, title: "原っぱの昼寝", text: "原っぱのやわらかい草の上で、赤ずきんはうとうと昼寝をしました。" }],
+      [last(routeH), { type: "home", good: true, title: "おばあさんに会う", text: "赤ずきんは今日もおばあさんに会いに、まっすぐ歩いていきました。" }]
+    ]);
+
+    const app = document.querySelector("#app");
+    const stageShell = document.querySelector(".stage-shell");
+    const stage = document.querySelector("#stage");
+    const maze = document.querySelector("#maze");
+    const sentence = document.querySelector("#sentence");
+    const badge = document.querySelector("#badge");
+    const stageTitle = document.querySelector("#stageTitle");
+    const stageText = document.querySelector("#stageText");
+    const cells = new Map();
+    const walkFrames = ["assets/red-walk/sticker/red-riding-hood-walk-sticker.png"];
+    let current = start;
+    let path = [start];
+    let locked = false;
+    let walkFrame = 0;
+    let audioCtx = null;
+    let bgmTimer = null;
+    let bgmStep = 0;
+
+    validateMaze();
+    buildMaze();
+    renderScene("ready");
+    renderMaze();
+
+    document.querySelectorAll("[data-move]").forEach((button) => {
+      button.addEventListener("click", () => {
+        startAudio();
+        const [dx, dy] = button.dataset.move.split(",").map(Number);
+        move(dx, dy);
+      });
+    });
+    document.querySelector("#restart").addEventListener("click", () => {
+      startAudio();
+      playRestartSound();
+      reset();
+    });
+    window.addEventListener("keydown", (event) => {
+      const moves = {
+        ArrowUp: [0, -1], w: [0, -1],
+        ArrowDown: [0, 1], s: [0, 1],
+        ArrowLeft: [-1, 0], a: [-1, 0],
+        ArrowRight: [1, 0], d: [1, 0]
+      };
+      if (!moves[event.key]) return;
+      event.preventDefault();
+      startAudio();
+      move(...moves[event.key]);
+    });
+
+    function buildMaze() {
+      maze.innerHTML = "";
+      for (let y = 0; y < rows; y += 1) {
+        for (let x = 0; x < cols; x += 1) {
+          const id = key(x, y);
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.innerHTML = `<span>${labels.get(id)}</span>`;
+          setWalls(cell, x, y);
+          if (endings.has(id)) cell.classList.add(endings.get(id).good ? "goal" : "bad");
+          maze.append(cell);
+          cells.set(id, cell);
+        }
+      }
+    }
+
+    function setWalls(cell, x, y) {
+      const open = graph.get(key(x, y));
+      cell.style.borderTopWidth = open.has(key(x, y - 1)) ? "0" : "2px";
+      cell.style.borderRightWidth = open.has(key(x + 1, y)) ? "0" : "2px";
+      cell.style.borderBottomWidth = open.has(key(x, y + 1)) ? "0" : "2px";
+      cell.style.borderLeftWidth = open.has(key(x - 1, y)) ? "0" : "2px";
+    }
+
+    function move(dx, dy) {
+      if (locked) return;
+      const [x, y] = current.split(",").map(Number);
+      const next = key(x + dx, y + dy);
+      if (!graph.get(current).has(next)) {
+        playBumpSound();
+        cells.get(current).animate([
+          { transform: "translateX(0)" },
+          { transform: "translateX(-5px)" },
+          { transform: "translateX(5px)" },
+          { transform: "translateX(0)" }
+        ], { duration: 170, easing: "ease-out" });
+        return;
+      }
+      current = next;
+      const old = path.indexOf(next);
+      path = old >= 0 ? path.slice(0, old + 1) : [...path, next];
+      playStepSound();
+      renderMaze();
+      if (endings.has(current)) finish(endings.get(current));
+    }
+
+    function renderMaze() {
+      for (const [id, cell] of cells) {
+        cell.classList.toggle("visited", path.includes(id));
+        cell.classList.toggle("current", id === current);
+      }
+      sentence.textContent = path.map((id) => labels.get(id)).join("");
+    }
+
+    function finish(ending) {
+      locked = true;
+      app.classList.toggle("wrong-mode", !ending.good);
+      badge.textContent = ending.good ? "CLEAR" : "やりなおし";
+      stageTitle.textContent = ending.title;
+      stageText.textContent = ending.text;
+      renderScene(ending.type);
+      stageShell.classList.add("paused");
+      playFinishSound(ending);
+      if (!ending.good) window.setTimeout(reset, 5200);
+    }
+
+    function reset() {
+      current = start;
+      path = [start];
+      locked = false;
+      app.classList.remove("wrong-mode");
+      badge.textContent = "STAGE 1";
+      stageTitle.textContent = "森の入口";
+      stageText.textContent = "矢印キーかボタンで進み、ひらがなをつなげて一文を完成させます。";
+      renderScene("ready");
+      renderMaze();
+    }
+
+    function startAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      if (!bgmTimer) startBgm();
+    }
+
+    function startBgm() {
+      const melody = [
+        [659.25, 0.11], [783.99, 0.11], [987.77, 0.16], [783.99, 0.11],
+        [698.46, 0.11], [880.00, 0.16], [783.99, 0.11], [659.25, 0.16],
+        [587.33, 0.11], [659.25, 0.11], [783.99, 0.18], [523.25, 0.18]
+      ];
+      bgmTimer = window.setInterval(() => {
+        if (!audioCtx || locked) return;
+        const [freq, length] = melody[bgmStep % melody.length];
+        playTone(freq, length, "triangle", 0.026, 0.01, 0.18);
+        if (bgmStep % 4 === 0) playTone(freq / 2, 0.2, "sine", 0.018, 0.03, 0.22);
+        bgmStep += 1;
+      }, 330);
+    }
+
+    function playTone(freq, duration, type = "sine", volume = 0.05, attack = 0.01, release = 0.12) {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(volume, now + attack);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + release);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + duration + release + 0.02);
+    }
+
+    function playStepSound() {
+      playTone(880, 0.045, "triangle", 0.035, 0.005, 0.06);
+      window.setTimeout(() => playTone(1174.66, 0.04, "triangle", 0.025, 0.005, 0.05), 45);
+    }
+
+    function playBumpSound() {
+      playTone(220, 0.08, "square", 0.03, 0.005, 0.09);
+      window.setTimeout(() => playTone(174.61, 0.08, "square", 0.024, 0.005, 0.1), 55);
+    }
+
+    function playRestartSound() {
+      [523.25, 659.25, 783.99].forEach((freq, index) => {
+        window.setTimeout(() => playTone(freq, 0.07, "triangle", 0.03, 0.006, 0.08), index * 55);
+      });
+    }
+
+    function playFinishSound(ending) {
+      if (ending.type === "flower") {
+        [783.99, 987.77, 1174.66, 1567.98].forEach((freq, index) => {
+          window.setTimeout(() => playTone(freq, 0.12, "triangle", 0.04, 0.008, 0.14), index * 85);
+        });
+        return;
+      }
+      if (ending.good) {
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, index) => {
+          window.setTimeout(() => playTone(freq, 0.16, "triangle", 0.045, 0.01, 0.18), index * 100);
+        });
+        return;
+      }
+      [349.23, 293.66, 261.63].forEach((freq, index) => {
+        window.setTimeout(() => playTone(freq, 0.13, "sine", 0.035, 0.01, 0.15), index * 95);
+      });
+    }
+
+    function renderScene(type) {
+      const object = sceneObject(type);
+      const heroSrc = object.hero || walkFrames[walkFrame];
+      const heroClass = object.hero ? "walk-hero reaction-hero" : "walk-hero";
+      stageShell.classList.remove("paused", "walking");
+      stage.innerHTML = `
+        <div class="drifting-trees" aria-hidden="true">
+          <img class="tree-sprite" style="--tree-delay: -1.2s;" src="assets/scene/stickers/tree-selected-06.png" alt="">
+          <img class="tree-sprite" style="--tree-delay: -4.0s;" src="assets/scene/stickers/tree-selected-06.png" alt="">
+          <img class="tree-sprite" style="--tree-delay: -6.8s;" src="assets/scene/stickers/tree-selected-06.png" alt="">
+          <img class="tree-sprite" style="--tree-delay: -9.6s;" src="assets/scene/stickers/tree-selected-06.png" alt="">
+          <img class="tree-sprite" style="--tree-delay: -12.4s;" src="assets/scene/stickers/tree-selected-06.png" alt="">
+          <img class="tree-sprite" style="--tree-delay: -15.2s;" src="assets/scene/stickers/tree-selected-06.png" alt="">
+          <img class="tree-sprite" style="--tree-delay: -18.0s;" src="assets/scene/stickers/tree-selected-06.png" alt="">
+          <img class="tree-sprite" style="--tree-delay: -20.8s;" src="assets/scene/stickers/tree-selected-06.png" alt="">
+          <img class="tree-sprite" style="--tree-delay: -23.6s;" src="assets/scene/stickers/tree-selected-06.png" alt="">
+        </div>
+        <img id="walkHero" class="${heroClass}" src="${heroSrc}" alt="">
+        ${object.html}
+        <div class="drifting-grass" aria-hidden="true">
+          <img class="grass-sprite back" style="--grass-delay: -1.8s;" src="assets/scene/stickers/grass-selected-06.png" alt="">
+          <img class="grass-sprite mid" style="--grass-delay: -6.1s;" src="assets/scene/stickers/grass-selected-06.png" alt="">
+          <img class="grass-sprite front" style="--grass-delay: -3.8s;" src="assets/scene/stickers/grass-selected-06.png" alt="">
+        </div>
+      `;
+    }
+
+    function scrollLayer(stripClass, panelClass, content) {
+      return `<div class="${stripClass}" aria-hidden="true"><div class="${panelClass}">${content}</div><div class="${panelClass}">${content}</div></div>`;
+    }
+
+    function sceneObject(type) {
+      const objects = {
+        ready: { word: "", html: "" },
+        flower: {
+          word: "さいた",
+          hero: "assets/red-walk/sticker/red-riding-hood-flower-reaction-08.png",
+          html: `<div class="scene-object flower" aria-hidden="true"></div>`
+        },
+        cat: { word: "ころころ", html: `<div class="scene-object cat" aria-hidden="true"></div>` },
+        stone: { word: "ならべた", html: `<div class="scene-object note" aria-hidden="true">○</div>` },
+        lake: { word: "つきのうた", html: `<div class="scene-object note" aria-hidden="true">♪</div>` },
+        whistle: { word: "ぴゅう", html: `<div class="scene-object note" aria-hidden="true">♪</div>` },
+        pie: { word: "おやつ", html: `<div class="scene-object note" aria-hidden="true">●</div>` },
+        song: { word: "ららら", html: `<div class="scene-object note" aria-hidden="true">♪</div>` },
+        bird: { word: "おてがみ", html: `<div class="scene-object letter" aria-hidden="true"></div>` },
+        nap: { word: "すやすや", html: `<div class="scene-object nap" aria-hidden="true"></div>` },
+        home: { word: "ついた", html: `<div class="scene-object house" aria-hidden="true"></div>` }
+      };
+      return objects[type] || objects.ready;
+    }
+
+    function connect(ids) {
+      for (let i = 0; i < ids.length - 1; i += 1) {
+        graph.get(ids[i]).add(ids[i + 1]);
+        graph.get(ids[i + 1]).add(ids[i]);
+      }
+    }
+
+    function writeText(ids, text) {
+      const chars = [...text];
+      if (ids.length !== chars.length) throw new Error(`${text} の文字数がルート長と違います`);
+      chars.forEach((char, index) => labels.set(ids[index], char));
+    }
+
+    function validateMaze() {
+      const all = new Set([...trunk, ...routeA, ...routeB, ...routeC, ...routeD, ...routeE, ...routeF, ...routeG, ...routeH]);
+      if (all.size !== 100 || labels.size !== 100) throw new Error("迷路が100マスで構成されていません");
+      const seen = new Set([start]);
+      const queue = [start];
+      while (queue.length) {
+        const id = queue.shift();
+        for (const next of graph.get(id)) {
+          if (seen.has(next)) continue;
+          seen.add(next);
+          queue.push(next);
+        }
+      }
+      if (seen.size !== 100) throw new Error("到達できないマスがあります");
+      const badCount = [...endings.values()].filter((ending) => !ending.good).length;
+      if (badCount < 7) throw new Error("不正解ルートが7本未満です");
+    }
+
+    function key(x, y) {
+      return `${x},${y}`;
+    }
+
+    function toKey([x, y]) {
+      return key(x, y);
+    }
+
+    function last(items) {
+      return items[items.length - 1];
+    }
+  </script>
+</body>
+</html>
