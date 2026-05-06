@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文字迷路の赤ずきん レイアウト案10</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #302821;
+      --muted: #75695f;
+      --line: rgba(54, 43, 35, .2);
+      --paper: #fff9ee;
+      --cream: #fff0d8;
+      --rose: #d94755;
+      --pink: #f5a2ac;
+      --leaf: #4f8a62;
+      --mint: #dff3de;
+      --sky: #bee8f5;
+      --blue: #7eb8d6;
+      --gold: #f2bd4b;
+      --violet: #8f82c8;
+      font-family: "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 8%, rgba(242, 189, 75, .28) 0 90px, transparent 92px),
+        linear-gradient(180deg, #f8f3e8 0, #eef7ed 54%, #f7efe3 100%);
+    }
+
+    .page {
+      width: min(1500px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 44px;
+    }
+
+    .intro {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.55rem, 3vw, 2.4rem);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .intro p {
+      max-width: 760px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+      font-weight: 700;
+    }
+
+    .legend {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      font-size: .82rem;
+      font-weight: 900;
+    }
+
+    .pill {
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 249, 238, .8);
+    }
+
+    .gallery {
+      display: grid;
+      gap: 22px;
+    }
+
+    .concept {
+      min-height: 560px;
+      border: 1px solid rgba(54, 43, 35, .16);
+      border-radius: 10px;
+      background: rgba(255, 253, 247, .72);
+      box-shadow: 0 18px 48px rgba(70, 51, 30, .12);
+      overflow: hidden;
+    }
+
+    .concept-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(54, 43, 35, .12);
+      background: rgba(255, 249, 238, .78);
+    }
+
+    .concept-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 1000;
+      font-size: 1.05rem;
+    }
+
+    .number {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: var(--rose);
+      color: #fffdf8;
+      box-shadow: inset 0 -3px 0 rgba(0,0,0,.12);
+      flex: 0 0 auto;
+    }
+
+    .concept-note {
+      color: var(--muted);
+      font-size: .84rem;
+      line-height: 1.4;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .mock {
+      height: 510px;
+      display: grid;
+      grid-template-columns: minmax(390px, .92fr) minmax(430px, 1.08fr);
+      background: #f8f0df;
+      overflow: hidden;
+    }
+
+    .maze-zone,
+    .scene-zone {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .maze-zone {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 10px;
+      padding: 16px;
+      background: rgba(255, 248, 234, .92);
+    }
+
+    .scene-zone {
+      overflow: hidden;
+      background: url("assets/scene/background-horizontal-path-v1.png") center / cover no-repeat;
+    }
+
+    .bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 42px;
+    }
+
+    .game-title {
+      font-size: clamp(1rem, 2vw, 1.35rem);
+      line-height: 1.15;
+      font-weight: 1000;
+    }
+
+    .badge {
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.78);
+      font-size: .82rem;
+      font-weight: 1000;
+      white-space: nowrap;
+    }
+
+    .maze-frame {
+      align-self: center;
+      justify-self: center;
+      width: min(100%, 430px);
+      aspect-ratio: 1;
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      grid-template-rows: repeat(10, 1fr);
+      border: 4px solid #3b3028;
+      border-radius: 8px;
+      background: #3b3028;
+      overflow: hidden;
+      box-shadow: 0 10px 28px rgba(58, 40, 23, .16);
+    }
+
+    .cell {
+      position: relative;
+      display: grid;
+      place-items: center;
+      border: 1px solid #3b3028;
+      background: #fff0d2;
+      font-size: clamp(.78rem, 1.65vw, 1.08rem);
+      font-weight: 1000;
+      line-height: 1;
+    }
+
+    .cell::before {
+      content: "";
+      position: absolute;
+      inset: 16%;
+      border-radius: 5px;
+      background: rgba(255,255,255,.38);
+      transform: rotate(-5deg);
+    }
+
+    .cell span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .cell.seen { background: #ffd5ca; }
+    .cell.now { background: #ee9aa0; }
+    .cell.good { background: #ffe28b; }
+    .cell.bad { background: #d9edff; }
+
+    .cell.now::after {
+      content: "";
+      position: absolute;
+      z-index: 2;
+      left: 50%;
+      bottom: 8%;
+      width: 42%;
+      height: 48%;
+      border-radius: 48% 48% 42% 42%;
+      background:
+        radial-gradient(circle at 50% 34%, #ffd9b2 0 18%, transparent 19%),
+        radial-gradient(circle at 39% 33%, #2e251f 0 3%, transparent 3.5%),
+        radial-gradient(circle at 61% 33%, #2e251f 0 3%, transparent 3.5%),
+        linear-gradient(180deg, #d94755 0 53%, #eb6470 54% 100%);
+      border: 2px solid #a72b35;
+      transform: translateX(-50%);
+    }
+
+    .sentence-box,
+    .caption-box,
+    .control-box,
+    .status-box {
+      border: 1px solid rgba(54, 43, 35, .16);
+      border-radius: 8px;
+      background: rgba(255, 253, 246, .84);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 8px 24px rgba(54, 43, 35, .08);
+    }
+
+    .sentence-box {
+      padding: 9px 11px;
+    }
+
+    .label {
+      margin-bottom: 2px;
+      color: var(--muted);
+      font-size: .74rem;
+      font-weight: 1000;
+    }
+
+    .sentence {
+      min-height: 1.45em;
+      font-size: 1.05rem;
+      line-height: 1.35;
+      font-weight: 1000;
+      overflow-wrap: anywhere;
+    }
+
+    .caption-box {
+      padding: 10px 12px;
+    }
+
+    .caption-title {
+      margin-bottom: 3px;
+      font-size: 1.1rem;
+      line-height: 1.2;
+      font-weight: 1000;
+    }
+
+    .caption-text {
+      color: var(--muted);
+      font-size: .85rem;
+      line-height: 1.5;
+      font-weight: 700;
+    }
+
+    .control-box {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 9px;
+    }
+
+    .restart {
+      min-height: 34px;
+      border: 1px solid rgba(54, 43, 35, .24);
+      border-radius: 8px;
+      background: #fffdf8;
+      font-weight: 1000;
+      box-shadow: 0 3px 0 rgba(54,43,35,.16);
+    }
+
+    .arrows {
+      display: grid;
+      grid-template-columns: repeat(3, 34px);
+      grid-template-rows: repeat(2, 31px);
+      gap: 5px;
+    }
+
+    .arrow {
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(54, 43, 35, .22);
+      border-radius: 8px;
+      background: #fffdf8;
+      font-weight: 1000;
+      box-shadow: 0 3px 0 rgba(54,43,35,.14);
+    }
+
+    .arrow.up { grid-column: 2; }
+    .arrow.left { grid-column: 1; grid-row: 2; }
+    .arrow.down { grid-column: 2; grid-row: 2; }
+    .arrow.right { grid-column: 3; grid-row: 2; }
+
+    .hero {
+      position: absolute;
+      left: 48%;
+      bottom: 18%;
+      width: min(29%, 190px);
+      transform: translateX(-50%);
+      filter: drop-shadow(0 12px 12px rgba(42, 31, 22, .22));
+    }
+
+    .prop {
+      position: absolute;
+      right: 19%;
+      bottom: 18%;
+      width: 44px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: var(--pink);
+      box-shadow:
+        0 -31px 0 -8px var(--pink),
+        0 31px 0 -8px var(--pink),
+        -31px 0 0 -8px var(--pink),
+        31px 0 0 -8px var(--pink),
+        0 0 0 13px var(--gold);
+    }
+
+    .stage-word {
+      position: absolute;
+      left: 58%;
+      top: 35%;
+      transform: translateX(-50%);
+      padding: 8px 13px;
+      border: 1px solid rgba(54,43,35,.18);
+      border-radius: 8px;
+      background: rgba(255,253,248,.84);
+      font-size: 1.3rem;
+      font-weight: 1000;
+      box-shadow: 0 8px 20px rgba(54,43,35,.1);
+    }
+
+    .status-box {
+      padding: 7px 10px;
+      font-size: .82rem;
+      font-weight: 1000;
+    }
+
+    .layout-1 .mock {
+      grid-template-columns: minmax(400px, .95fr) minmax(440px, 1.05fr);
+    }
+    .layout-1 .maze-zone { border-right: 3px solid rgba(54,43,35,.14); }
+    .layout-1 .scene-caption { position: absolute; left: 18%; right: 18%; bottom: 14px; }
+
+    .layout-2 .mock {
+      grid-template-columns: minmax(390px, .9fr) minmax(440px, 1.1fr);
+      gap: 14px;
+      padding: 14px;
+      background: linear-gradient(90deg, #f6ead6, #eaf5e5);
+    }
+    .layout-2 .maze-zone,
+    .layout-2 .scene-zone {
+      border: 1px solid rgba(54,43,35,.18);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .layout-2 .scene-caption { position: absolute; left: 14px; right: 14px; bottom: 14px; }
+
+    .layout-3 .mock {
+      grid-template-columns: minmax(410px, .96fr) minmax(430px, 1.04fr);
+      background: #f9f2e4;
+    }
+    .layout-3 .maze-zone {
+      grid-template-rows: auto minmax(0, 1fr);
+      padding-bottom: 84px;
+    }
+    .layout-3 .sentence-box {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+    }
+    .layout-3 .control-box {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      width: 230px;
+    }
+    .layout-3 .scene-caption {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      top: 16px;
+    }
+
+    .layout-4 .mock {
+      grid-template-columns: minmax(390px, .88fr) minmax(470px, 1.12fr);
+      background: #fff7ea;
+    }
+    .layout-4 .maze-zone { padding-right: 8px; }
+    .layout-4 .scene-zone { border-left: 0; }
+    .layout-4 .shared-ribbon {
+      position: absolute;
+      z-index: 4;
+      left: -18px;
+      top: 74px;
+      width: 260px;
+      padding: 10px 14px 10px 24px;
+      border: 1px solid rgba(54,43,35,.18);
+      border-radius: 0 8px 8px 0;
+      background: rgba(255,253,248,.9);
+      font-weight: 1000;
+      box-shadow: 0 8px 26px rgba(54,43,35,.12);
+    }
+    .layout-4 .scene-caption { position: absolute; left: 24px; right: 24px; bottom: 18px; }
+
+    .layout-5 .mock {
+      grid-template-columns: minmax(420px, .98fr) minmax(420px, 1.02fr);
+      background: #edf5e9;
+    }
+    .layout-5 .maze-zone {
+      background: linear-gradient(180deg, rgba(255,248,234,.94), rgba(239,246,229,.94));
+      border-right: 1px solid rgba(54,43,35,.12);
+    }
+    .layout-5 .sentence-box {
+      border-left: 6px solid var(--rose);
+    }
+    .layout-5 .scene-caption {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      border-left: 6px solid var(--leaf);
+    }
+
+    .layout-6 .mock {
+      grid-template-columns: minmax(395px, .86fr) minmax(460px, 1.14fr);
+      background: #fbf4e7;
+    }
+    .layout-6 .maze-zone {
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+    }
+    .layout-6 .status-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .layout-6 .scene-caption {
+      position: absolute;
+      left: 20px;
+      bottom: 22px;
+      width: min(370px, calc(100% - 40px));
+    }
+
+    .layout-7 .mock {
+      grid-template-columns: minmax(430px, .96fr) minmax(430px, 1.04fr);
+      background: #f6efe4;
+    }
+    .layout-7 .maze-zone {
+      padding: 0;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+    .layout-7 .bar,
+    .layout-7 .sentence-box,
+    .layout-7 .control-box { margin: 14px; }
+    .layout-7 .maze-frame {
+      width: min(100%, 450px);
+      border-left: 0;
+      border-right: 0;
+      border-radius: 0;
+    }
+    .layout-7 .scene-caption {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: min(430px, 74%);
+      border-radius: 8px 0 0 0;
+    }
+
+    .layout-8 .mock {
+      grid-template-columns: minmax(390px, .84fr) minmax(490px, 1.16fr);
+      background: linear-gradient(90deg, #fff6e7 0 47%, #dcedf4 47% 100%);
+    }
+    .layout-8 .maze-zone { border-right: 8px solid rgba(255,255,255,.55); }
+    .layout-8 .scene-top {
+      position: absolute;
+      z-index: 3;
+      left: 16px;
+      right: 16px;
+      top: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .layout-8 .scene-caption {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+    }
+
+    .layout-9 .mock {
+      grid-template-columns: minmax(430px, 1fr) minmax(430px, 1fr);
+      background: #f8f0de;
+    }
+    .layout-9 .maze-zone {
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.3), transparent 26%),
+        rgba(255,248,234,.92);
+    }
+    .layout-9 .scene-zone {
+      border-radius: 18px 0 0 18px;
+      box-shadow: -12px 0 30px rgba(54,43,35,.12);
+    }
+    .layout-9 .scene-caption {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      bottom: 24px;
+    }
+
+    .layout-10 .mock {
+      grid-template-columns: minmax(400px, .9fr) minmax(450px, 1.1fr);
+      padding: 16px;
+      gap: 0;
+      background:
+        linear-gradient(90deg, rgba(255,249,238,.98) 0 47%, rgba(255,249,238,.42) 47% 100%),
+        url("assets/scene/background-horizontal-path-v1.png") center / cover no-repeat;
+    }
+    .layout-10 .maze-zone {
+      border: 1px solid rgba(54,43,35,.18);
+      border-radius: 10px 0 0 10px;
+      background: rgba(255,249,238,.88);
+    }
+    .layout-10 .scene-zone {
+      border: 1px solid rgba(54,43,35,.18);
+      border-left: 0;
+      border-radius: 0 10px 10px 0;
+      background: transparent;
+    }
+    .layout-10 .scene-caption {
+      position: absolute;
+      left: 20px;
+      right: 20px;
+      bottom: 20px;
+    }
+
+    @media (max-width: 980px) {
+      .intro {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .legend { justify-content: flex-start; }
+
+      .mock {
+        height: auto;
+        min-height: 760px;
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(310px, 40vh) auto;
+      }
+
+      .scene-zone {
+        grid-row: 1;
+      }
+
+      .maze-zone {
+        grid-row: 2;
+      }
+
+      .layout-2 .mock,
+      .layout-10 .mock {
+        grid-template-columns: 1fr;
+      }
+
+      .layout-3 .control-box {
+        position: static;
+        width: auto;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        width: min(100% - 18px, 1500px);
+        padding-top: 18px;
+      }
+
+      .concept-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .concept-note {
+        text-align: left;
+      }
+
+      .maze-zone {
+        padding: 10px;
+      }
+
+      .control-box {
+        grid-template-columns: 1fr;
+      }
+
+      .arrows {
+        justify-self: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="intro">
+      <div>
+        <h1>文字迷路の赤ずきん レイアウト案10</h1>
+        <p>左に10x10の文字迷路、右にアニメーション画面という前提を保ったまま、文章・操作・ステータス・枠の扱いを変えた比較用モックです。ゲーム本体の実装候補を選ぶための画面設計サンプルです。</p>
+      </div>
+      <div class="legend" aria-label="凡例">
+        <span class="pill">左: 迷路</span>
+        <span class="pill">右: アニメーション</span>
+        <span class="pill">文章と操作の配置比較</span>
+      </div>
+    </header>
+
+    <div class="gallery" id="gallery"></div>
+  </main>
+
+  <template id="mock-template">
+    <section class="concept">
+      <div class="concept-head">
+        <div class="concept-title"><span class="number"></span><span class="name"></span></div>
+        <div class="concept-note"></div>
+      </div>
+      <div class="mock">
+        <section class="maze-zone">
+          <div class="bar">
+            <div class="game-title">文字迷路の赤ずきん</div>
+            <div class="badge">STAGE 1</div>
+          </div>
+          <div class="status-row"></div>
+          <div class="maze-frame"></div>
+          <div class="sentence-box">
+            <div class="label">できかけの一文</div>
+            <div class="sentence">あかずきんはきょうも</div>
+          </div>
+          <div class="control-box">
+            <button class="restart" type="button">はじめから</button>
+            <div class="arrows" aria-label="移動ボタン">
+              <div class="arrow up">↑</div>
+              <div class="arrow left">←</div>
+              <div class="arrow down">↓</div>
+              <div class="arrow right">→</div>
+            </div>
+          </div>
+        </section>
+        <section class="scene-zone">
+          <div class="scene-top"></div>
+          <div class="shared-ribbon">できかけ: あかずきんはきょうも</div>
+          <img class="hero" src="assets/red-walk/sticker/red-riding-hood-walk-sticker.png" alt="">
+          <div class="prop"></div>
+          <div class="stage-word">てくてく</div>
+          <div class="caption-box scene-caption">
+            <div class="caption-title">森の入口</div>
+            <div class="caption-text">赤ずきんが道を歩き出しました。次の文字で物語が少しずつ変わります。</div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </template>
+
+  <script>
+    const concepts = [
+      {
+        name: "一体型ワイドステージ",
+        note: "左右を密着させ、下だけに文章と操作を置く。今の構成に最も近く、改善差分が小さい。",
+        className: "layout-1"
+      },
+      {
+        name: "絵本の見開き",
+        note: "左右に薄い余白を持たせた見開き。枠はあるが軽く、かわいい紙面感を出しやすい。",
+        className: "layout-2"
+      },
+      {
+        name: "文章を左下に固定",
+        note: "迷路の現在入力を常に左下へ。視線移動が短く、操作中の読みやすさを優先。",
+        className: "layout-3"
+      },
+      {
+        name: "文章リボン横断",
+        note: "できかけの一文を左右の境界へまたがせ、迷路とアニメのつながりを強める。",
+        className: "layout-4"
+      },
+      {
+        name: "赤と緑の情報帯",
+        note: "迷路側は赤、アニメ側は緑で役割を分ける。状態変化を色と位置で把握しやすい。",
+        className: "layout-5"
+      },
+      {
+        name: "上部ステータス重視",
+        note: "ステータスとルート状況を左上に集約。ステージ制や残り候補表示を足しやすい。",
+        className: "layout-6"
+      },
+      {
+        name: "迷路を主役に広げる",
+        note: "迷路枠を画面端まで伸ばして盤面を大きく見せる。右下に反応文を寄せる。",
+        className: "layout-7"
+      },
+      {
+        name: "アニメ画面ヘッダー型",
+        note: "タイトルとステージ表示をアニメ側の上部へ。物語画面としての印象を強くする。",
+        className: "layout-8"
+      },
+      {
+        name: "丸みのある舞台",
+        note: "右のアニメ画面だけ大きな舞台として少し重ねる。可愛さと高級感を出しやすい。",
+        className: "layout-9"
+      },
+      {
+        name: "背景共有のガラスUI",
+        note: "全体背景を共有し、左だけ半透明の操作面にする。箱感を減らして一体化する。",
+        className: "layout-10"
+      }
+    ];
+
+    const chars = [..."たいそあとみたをきいでさんだこてべたよたちみでこねならうのきながばろひをしみでつはいきんはこいうずみあかずきんはきょうもまいぱんがとはうばおみをいたうりにてあさんたべをうたすがへんなでたうたわをみいく"];
+    const gallery = document.querySelector("#gallery");
+    const template = document.querySelector("#mock-template");
+
+    concepts.forEach((concept, index) => {
+      const node = template.content.firstElementChild.cloneNode(true);
+      node.classList.add(concept.className);
+      node.querySelector(".number").textContent = String(index + 1).padStart(2, "0");
+      node.querySelector(".name").textContent = concept.name;
+      node.querySelector(".concept-note").textContent = concept.note;
+
+      const maze = node.querySelector(".maze-frame");
+      chars.slice(0, 100).forEach((char, cellIndex) => {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        if ([50, 51, 52, 53, 54, 55].includes(cellIndex)) cell.classList.add("seen");
+        if (cellIndex === 55) cell.classList.add("now");
+        if ([9, 73, 99].includes(cellIndex)) cell.classList.add("bad");
+        if (cellIndex === 89) cell.classList.add("good");
+        cell.innerHTML = `<span>${char}</span>`;
+        maze.append(cell);
+      });
+
+      const statusRow = node.querySelector(".status-row");
+      if (concept.className === "layout-6") {
+        statusRow.innerHTML = `
+          <div class="status-box">通常: 文字を選択中</div>
+          <div class="status-box">候補: 3ルート</div>
+        `;
+      } else {
+        statusRow.remove();
+      }
+
+      if (concept.className === "layout-8") {
+        node.querySelector(".scene-top").innerHTML = `
+          <div class="game-title">文字迷路の赤ずきん</div>
+          <div class="badge">STAGE 1</div>
+        `;
+      }
+
+      if (!["layout-3", "layout-4"].includes(concept.className)) {
+        const ribbon = node.querySelector(".shared-ribbon");
+        if (ribbon) ribbon.remove();
+      }
+
+      if (concept.className === "layout-3") {
+        node.querySelector(".maze-zone").append(node.querySelector(".control-box"));
+      }
+
+      gallery.append(node);
+    });
+  </script>
+</body>
+</html>
