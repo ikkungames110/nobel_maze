@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文字迷路の赤ずきん</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #2a211d;
+      --muted: #6f625a;
+      --paper: #fff8ee;
+      --wall: #3d312a;
+      --tile: #fff3dc;
+      --tile2: #ffe2d8;
+      --red: #d93b45;
+      --leaf: #3f7f5a;
+      --leaf-dark: #276043;
+      --gold: #e9ad37;
+      --sky: #bfe7ff;
+      --night: #6b6aa6;
+      font-family: "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, #cbefff 0 45%, #d7edd8 45% 100%);
+      overflow-x: hidden;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: minmax(42vh, 1fr) auto;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 28%),
+        radial-gradient(circle at 12% 12%, rgba(255, 221, 111, .72), transparent 7rem);
+    }
+
+    .scene {
+      position: relative;
+      overflow: hidden;
+      min-height: 340px;
+      padding: 18px min(4vw, 42px) 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .hud {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      max-width: 1180px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 3vw, 2.25rem);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .status {
+      min-width: 88px;
+      text-align: center;
+      border: 2px solid rgba(61, 49, 42, .18);
+      border-radius: 8px;
+      background: rgba(255, 248, 238, .88);
+      padding: 7px 10px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .stage-title {
+      position: relative;
+      z-index: 3;
+      align-self: end;
+      width: min(1180px, 100%);
+      margin: 10px auto 6px;
+      font-size: clamp(1.1rem, 2.4vw, 1.9rem);
+      font-weight: 900;
+      text-shadow: 0 2px 0 rgba(255,255,255,.55);
+    }
+
+    .stage {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .sun {
+      position: absolute;
+      top: 52px;
+      right: 11vw;
+      width: 70px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: #ffd35c;
+      box-shadow: 0 0 0 18px rgba(255, 211, 92, .2);
+      animation: sunPulse 2.8s ease-in-out infinite;
+    }
+
+    .hill {
+      position: absolute;
+      left: -5vw;
+      right: -5vw;
+      bottom: -72px;
+      height: 180px;
+      border-radius: 50% 50% 0 0;
+      background: #8fc579;
+    }
+
+    .forest {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 52px;
+      height: 150px;
+      background:
+        radial-gradient(circle at 10% 100%, var(--leaf) 0 38px, transparent 39px),
+        radial-gradient(circle at 22% 100%, var(--leaf-dark) 0 54px, transparent 55px),
+        radial-gradient(circle at 35% 100%, var(--leaf) 0 45px, transparent 46px),
+        radial-gradient(circle at 52% 100%, var(--leaf-dark) 0 56px, transparent 57px),
+        radial-gradient(circle at 68% 100%, var(--leaf) 0 48px, transparent 49px),
+        radial-gradient(circle at 82% 100%, var(--leaf-dark) 0 58px, transparent 59px),
+        radial-gradient(circle at 95% 100%, var(--leaf) 0 42px, transparent 43px);
+      opacity: .95;
+    }
+
+    .path {
+      position: absolute;
+      left: 50%;
+      bottom: -26px;
+      width: min(58vw, 560px);
+      height: 154px;
+      transform: translateX(-50%) perspective(280px) rotateX(47deg);
+      transform-origin: bottom;
+      border-radius: 50% 50% 0 0;
+      background: repeating-linear-gradient(90deg, #e5c08f 0 28px, #d5aa77 28px 54px);
+      border: 4px solid rgba(91, 66, 43, .18);
+    }
+
+    .hero {
+      position: absolute;
+      left: 12%;
+      bottom: 80px;
+      width: 70px;
+      height: 112px;
+      transform-origin: 50% 100%;
+      animation: idleWalk 1.2s ease-in-out infinite;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: 10px;
+      left: 14px;
+      width: 46px;
+      height: 48px;
+      border-radius: 48% 48% 42% 42%;
+      background: #ffd9b1;
+      box-shadow: inset 0 -8px 0 rgba(128, 76, 48, .14);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 5px;
+      width: 60px;
+      height: 80px;
+      border-radius: 34px 34px 12px 12px;
+      background: var(--red);
+      clip-path: polygon(50% 0, 90% 22%, 78% 100%, 20% 100%, 10% 22%);
+      box-shadow: 0 5px 0 rgba(110, 20, 30, .22);
+    }
+
+    .dress {
+      position: absolute;
+      left: 8px;
+      bottom: 0;
+      width: 56px;
+      height: 62px;
+      border-radius: 18px 18px 8px 8px;
+      background: #e84b54;
+      clip-path: polygon(22% 0, 78% 0, 100% 100%, 0 100%);
+    }
+
+    .basket {
+      position: absolute;
+      right: -18px;
+      bottom: 24px;
+      width: 34px;
+      height: 28px;
+      border: 4px solid #8d5c37;
+      border-top: 3px solid #8d5c37;
+      border-radius: 6px 6px 12px 12px;
+      background: #d99b52;
+    }
+
+    .wolf {
+      position: absolute;
+      right: 15%;
+      bottom: 86px;
+      width: 94px;
+      height: 78px;
+      opacity: .9;
+      transform-origin: bottom;
+      animation: wolfPeek 2.2s ease-in-out infinite;
+    }
+
+    .wolf::before {
+      content: "";
+      position: absolute;
+      inset: 22px 10px 0 12px;
+      border-radius: 42px 42px 18px 18px;
+      background: #7e8288;
+    }
+
+    .wolf::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 24px;
+      width: 48px;
+      height: 46px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 32% 47%, #202124 0 3px, transparent 4px),
+        radial-gradient(circle at 68% 47%, #202124 0 3px, transparent 4px),
+        linear-gradient(135deg, transparent 0 18%, #7e8288 19% 100%);
+      clip-path: polygon(6% 2%, 38% 18%, 50% 2%, 62% 18%, 94% 2%, 82% 100%, 18% 100%);
+    }
+
+    .spark {
+      position: absolute;
+      width: 13px;
+      height: 13px;
+      background: #fff7b3;
+      transform: rotate(45deg);
+      opacity: 0;
+    }
+
+    .spark.s1 { left: 34%; top: 30%; animation: sparkle 1.7s .2s infinite; }
+    .spark.s2 { left: 57%; top: 24%; animation: sparkle 1.9s .6s infinite; }
+    .spark.s3 { left: 72%; top: 42%; animation: sparkle 1.6s 1s infinite; }
+
+    .wrong .sun { background: #bba7e8; box-shadow: 0 0 0 18px rgba(107, 106, 166, .18); }
+    .wrong .scene { background: linear-gradient(180deg, rgba(88, 87, 148, .24), transparent 58%); }
+    .wrong .hero { animation: wobble .45s ease-in-out infinite; }
+    .wrong .wolf { animation: spinHop 1.2s ease-in-out infinite; }
+
+    .prop {
+      position: absolute;
+      z-index: 2;
+      font-size: clamp(2rem, 5vw, 4.4rem);
+      font-weight: 900;
+      text-shadow: 0 3px 0 rgba(255,255,255,.7);
+      animation: floatProp 1.6s ease-in-out infinite;
+    }
+
+    .prop.p1 { left: 22%; bottom: 190px; color: #7a4ab2; }
+    .prop.p2 { left: 48%; bottom: 210px; color: #ce6d31; animation-delay: .3s; }
+    .prop.p3 { right: 21%; bottom: 185px; color: #276f92; animation-delay: .6s; }
+
+    .playfield {
+      position: relative;
+      z-index: 4;
+      width: min(1180px, calc(100vw - 24px));
+      margin: -2px auto 0;
+      padding: 0 0 14px;
+    }
+
+    .maze-wrap {
+      background: linear-gradient(180deg, rgba(255, 248, 238, .86), rgba(255, 248, 238, .96));
+      border-top: 4px solid rgba(61, 49, 42, .22);
+      box-shadow: 0 -16px 50px rgba(39, 96, 67, .15);
+      padding: 12px;
+    }
+
+    .maze {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(20, minmax(0, 1fr));
+      grid-template-rows: repeat(5, minmax(34px, 1fr));
+      background: var(--wall);
+      border: 4px solid var(--wall);
+      border-radius: 8px;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    .cell {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      min-height: 0;
+      aspect-ratio: 1;
+      background: var(--tile);
+      border: 2px solid var(--wall);
+      font-size: clamp(.78rem, 2vw, 1.28rem);
+      font-weight: 900;
+      line-height: 1;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .cell::before {
+      content: "";
+      position: absolute;
+      inset: 13%;
+      border-radius: 5px;
+      background: rgba(255,255,255,.42);
+      transform: rotate(-5deg);
+    }
+
+    .cell span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .cell.visited { background: #ffd6ca; }
+    .cell.current {
+      background: #f6a9a2;
+      animation: cellPop .24s ease-out;
+    }
+
+    .cell.current::after {
+      content: "";
+      position: absolute;
+      inset: 8%;
+      border: 3px solid var(--red);
+      border-radius: 7px;
+      box-shadow: 0 0 0 4px rgba(217, 59, 69, .16);
+    }
+
+    .cell.goal { background: #ffe28c; }
+    .cell.dead { background: #d9e7ff; }
+
+    .sentence-panel {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      width: min(1180px, calc(100vw - 24px));
+      margin: 0 auto;
+      padding: 10px 12px 12px;
+      background: rgba(255, 248, 238, .96);
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: .82rem;
+      font-weight: 800;
+    }
+
+    .sentence {
+      min-height: 2.75em;
+      font-size: clamp(1rem, 2.3vw, 1.55rem);
+      font-weight: 900;
+      line-height: 1.38;
+      overflow-wrap: anywhere;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 46px);
+      grid-template-rows: repeat(2, 42px);
+      gap: 8px;
+      justify-content: end;
+    }
+
+    button {
+      border: 2px solid rgba(61, 49, 42, .24);
+      border-radius: 8px;
+      background: #fffdf8;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 3px 0 rgba(61, 49, 42, .18);
+    }
+
+    button:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 rgba(61, 49, 42, .18);
+    }
+
+    .restart { padding: 7px 12px; }
+    .up { grid-column: 2; }
+    .left { grid-column: 1; grid-row: 2; }
+    .down { grid-column: 2; grid-row: 2; }
+    .right { grid-column: 3; grid-row: 2; }
+
+    @keyframes idleWalk {
+      0%, 100% { transform: translateY(0) rotate(-2deg); }
+      50% { transform: translateY(-5px) rotate(2deg); }
+    }
+
+    @keyframes wolfPeek {
+      0%, 100% { transform: translateY(0) scaleX(1); }
+      50% { transform: translateY(-7px) scaleX(.96); }
+    }
+
+    @keyframes sparkle {
+      0%, 100% { opacity: 0; transform: scale(.4) rotate(45deg); }
+      45% { opacity: 1; transform: scale(1.15) rotate(45deg); }
+    }
+
+    @keyframes sunPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    @keyframes cellPop {
+      0% { transform: scale(.92); }
+      70% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes wobble {
+      0%, 100% { transform: rotate(-8deg); }
+      50% { transform: rotate(8deg) translateY(-3px); }
+    }
+
+    @keyframes spinHop {
+      0%, 100% { transform: translateY(0) rotate(-5deg); }
+      50% { transform: translateY(-12px) rotate(8deg); }
+    }
+
+    @keyframes floatProp {
+      0%, 100% { transform: translateY(0) rotate(-7deg); }
+      50% { transform: translateY(-16px) rotate(7deg); }
+    }
+
+    @media (max-width: 760px) {
+      .app { grid-template-rows: minmax(36vh, 1fr) auto; }
+      .scene { min-height: 290px; padding-inline: 12px; }
+      .hud { align-items: flex-start; }
+      .status { min-width: 78px; font-size: .9rem; }
+      .hero { left: 8%; bottom: 74px; transform: scale(.86); }
+      .wolf { right: 6%; bottom: 78px; transform: scale(.82); }
+      .maze-wrap { padding: 8px; overflow-x: auto; }
+      .maze { min-width: 720px; }
+      .sentence-panel {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .buttons {
+        justify-content: center;
+        grid-template-columns: repeat(3, 42px);
+        grid-template-rows: repeat(2, 38px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <section class="scene" id="scene" aria-label="物語アニメーション">
+      <div class="stage">
+        <div class="sun"></div>
+        <div class="forest"></div>
+        <div class="hill"></div>
+        <div class="path"></div>
+        <div class="wolf"></div>
+        <div class="hero"><div class="dress"></div><div class="basket"></div></div>
+        <div class="spark s1"></div>
+        <div class="spark s2"></div>
+        <div class="spark s3"></div>
+      </div>
+      <div class="hud">
+        <h1>文字迷路の赤ずきん</h1>
+        <div class="status" id="stateBadge">STAGE 1</div>
+      </div>
+      <div></div>
+      <div class="stage-title" id="stageTitle">森の小道</div>
+    </section>
+
+    <section class="playfield" aria-label="文字迷路">
+      <div class="maze-wrap">
+        <div class="maze" id="maze" aria-live="polite"></div>
+      </div>
+      <div class="sentence-panel">
+        <div>
+          <div class="label">できかけの一文</div>
+          <div class="sentence" id="sentence"></div>
+        </div>
+        <div>
+          <button class="restart" id="restart">はじめから</button>
+          <div class="buttons" aria-label="移動">
+            <button class="up" data-move="0,-1" aria-label="上へ">↑</button>
+            <button class="left" data-move="-1,0" aria-label="左へ">←</button>
+            <button class="down" data-move="0,1" aria-label="下へ">↓</button>
+            <button class="right" data-move="1,0" aria-label="右へ">→</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const cols = 20;
+    const rows = 5;
+    const start = "0,2";
+    const goal = "19,4";
+
+    const mainRoute = [
+      ...Array.from({ length: 20 }, (_, x) => key(x, 2)),
+      key(19, 3),
+      key(19, 4)
+    ];
+    const topRoute = [
+      key(5, 1), key(4, 1), key(3, 1), key(2, 1), key(1, 1), key(0, 1),
+      ...Array.from({ length: 20 }, (_, x) => key(x, 0)),
+      key(19, 1), key(18, 1), key(17, 1), key(16, 1), key(15, 1), key(14, 1),
+      key(13, 1), key(12, 1), key(11, 1), key(10, 1), key(9, 1), key(8, 1),
+      key(7, 1), key(6, 1)
+    ];
+    const bottomRoute = [
+      key(11, 3), key(10, 3), key(9, 3), key(8, 3), key(7, 3), key(6, 3),
+      key(5, 3), key(4, 3), key(3, 3), key(2, 3), key(1, 3), key(0, 3),
+      ...Array.from({ length: 19 }, (_, i) => key(i, 4)),
+      key(18, 3), key(17, 3), key(16, 3), key(15, 3), key(14, 3), key(13, 3),
+      key(12, 3)
+    ];
+
+    const labels = new Map();
+    writeText(mainRoute, "あかずきんはもりでおおかみにあいおうちへいく");
+    writeText(topRoute, "きのこぱんをおいかけてそらとぶなべにのりくもまでぴかぴかのおちゃをとどけましたよ");
+    writeText(bottomRoute, "ばけたおばあさんとこっそりおどりだしまほうのもりのりすにてがみをよませました");
+
+    const graph = new Map();
+    for (let y = 0; y < rows; y += 1) {
+      for (let x = 0; x < cols; x += 1) graph.set(key(x, y), new Set());
+    }
+    connectRoute(mainRoute);
+    connectRoute([key(5, 2), ...topRoute]);
+    connectRoute([key(11, 2), ...bottomRoute]);
+
+    const endings = new Map([
+      [goal, {
+        good: true,
+        title: "正しい一文",
+        caption: "赤ずきんは森でおおかみに会いました。でも寄り道せず、おうちへ急いで向かいました。"
+      }],
+      [key(6, 1), {
+        good: false,
+        title: "きのこパンの寄り道",
+        caption: "赤ずきんはきのこパンを追いかけ、空飛ぶなべで雲まで行ってしまいました。"
+      }],
+      [key(12, 3), {
+        good: false,
+        title: "へんてこなおばあさん",
+        caption: "赤ずきんはばけたおばあさんと踊りだし、森のりすに手紙を読ませました。"
+      }]
+    ]);
+
+    const cells = new Map();
+    let current = start;
+    let route = [start];
+    let locked = false;
+
+    const app = document.querySelector("#app");
+    const maze = document.querySelector("#maze");
+    const sentence = document.querySelector("#sentence");
+    const badge = document.querySelector("#stateBadge");
+    const stageTitle = document.querySelector("#stageTitle");
+    const scene = document.querySelector("#scene");
+
+    buildMaze();
+    render();
+
+    document.querySelectorAll("[data-move]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const [dx, dy] = button.dataset.move.split(",").map(Number);
+        move(dx, dy);
+      });
+    });
+    document.querySelector("#restart").addEventListener("click", reset);
+
+    window.addEventListener("keydown", (event) => {
+      const moves = {
+        ArrowUp: [0, -1], w: [0, -1],
+        ArrowDown: [0, 1], s: [0, 1],
+        ArrowLeft: [-1, 0], a: [-1, 0],
+        ArrowRight: [1, 0], d: [1, 0]
+      };
+      if (!moves[event.key]) return;
+      event.preventDefault();
+      move(...moves[event.key]);
+    });
+
+    function buildMaze() {
+      maze.innerHTML = "";
+      for (let y = 0; y < rows; y += 1) {
+        for (let x = 0; x < cols; x += 1) {
+          const id = key(x, y);
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.dataset.id = id;
+          cell.innerHTML = `<span>${labels.get(id)}</span>`;
+          setWalls(cell, x, y);
+          if (id === goal) cell.classList.add("goal");
+          if (endings.has(id) && id !== goal) cell.classList.add("dead");
+          maze.append(cell);
+          cells.set(id, cell);
+        }
+      }
+    }
+
+    function setWalls(cell, x, y) {
+      const open = graph.get(key(x, y));
+      cell.style.borderTopWidth = open.has(key(x, y - 1)) ? "0" : "2px";
+      cell.style.borderRightWidth = open.has(key(x + 1, y)) ? "0" : "2px";
+      cell.style.borderBottomWidth = open.has(key(x, y + 1)) ? "0" : "2px";
+      cell.style.borderLeftWidth = open.has(key(x - 1, y)) ? "0" : "2px";
+    }
+
+    function move(dx, dy) {
+      if (locked) return;
+      const [x, y] = current.split(",").map(Number);
+      const next = key(x + dx, y + dy);
+      if (!graph.get(current).has(next)) {
+        nudgeCurrent();
+        return;
+      }
+      current = next;
+      const oldIndex = route.indexOf(next);
+      route = oldIndex >= 0 ? route.slice(0, oldIndex + 1) : [...route, next];
+      render();
+      if (endings.has(current)) finish(endings.get(current));
+    }
+
+    function render() {
+      for (const [id, cell] of cells) {
+        cell.classList.toggle("visited", route.includes(id));
+        cell.classList.toggle("current", id === current);
+      }
+      sentence.textContent = storyText(route);
+    }
+
+    function finish(ending) {
+      locked = true;
+      badge.textContent = ending.good ? "CLEAR" : "やりなおし";
+      stageTitle.textContent = ending.title;
+      app.classList.toggle("wrong", !ending.good);
+      addProps(ending.good);
+      scene.animate([
+        { filter: "saturate(1)" },
+        { filter: ending.good ? "saturate(1.25) brightness(1.05)" : "hue-rotate(35deg) saturate(1.35)" },
+        { filter: "saturate(1)" }
+      ], { duration: 1400, easing: "ease-in-out" });
+      sentence.textContent = ending.good ? storyText(route) : ending.caption;
+      if (!ending.good) window.setTimeout(reset, 3600);
+    }
+
+    function reset() {
+      current = start;
+      route = [start];
+      locked = false;
+      badge.textContent = "STAGE 1";
+      stageTitle.textContent = "森の小道";
+      app.classList.remove("wrong");
+      document.querySelectorAll(".prop").forEach((prop) => prop.remove());
+      render();
+    }
+
+    function addProps(isGood) {
+      document.querySelectorAll(".prop").forEach((prop) => prop.remove());
+      const props = isGood
+        ? [["ほっ", "p1"], ["きら", "p2"], ["いえ", "p3"]]
+        : [["パン", "p1"], ["なべ", "p2"], ["りす", "p3"]];
+      for (const [text, cls] of props) {
+        const prop = document.createElement("div");
+        prop.className = `prop ${cls}`;
+        prop.textContent = text;
+        scene.append(prop);
+      }
+    }
+
+    function nudgeCurrent() {
+      cells.get(current).animate([
+        { transform: "translateX(0)" },
+        { transform: "translateX(-5px)" },
+        { transform: "translateX(5px)" },
+        { transform: "translateX(0)" }
+      ], { duration: 180, easing: "ease-out" });
+    }
+
+    function connectRoute(ids) {
+      for (let i = 0; i < ids.length - 1; i += 1) {
+        graph.get(ids[i]).add(ids[i + 1]);
+        graph.get(ids[i + 1]).add(ids[i]);
+      }
+    }
+
+    function writeText(ids, text) {
+      [...text].forEach((char, index) => labels.set(ids[index], char));
+    }
+
+    function storyText(ids) {
+      return ids.map((id) => labels.get(id)).join("");
+    }
+
+    function key(x, y) {
+      return `${x},${y}`;
+    }
+  </script>
+</body>
+</html>
